@@ -1,0 +1,41 @@
+SIMPLE UNIT TEST:
+
+        Business Class:
+
+
+                package com.outspace.unittesting.unittesting.business;
+
+                public class SomeBusinessImpl {
+
+                    public int calculateSum(int[] data) {
+                        int sum = 0;
+                        for (int value:data) {
+                            sum += value;
+                        }
+                        return sum;
+                    }
+                }
+
+
+        Unit Test:
+
+
+                package com.outspace.unittesting.unittesting.business;
+
+                import org.junit.jupiter.api.Test;
+
+                import static org.junit.jupiter.api.Assertions.*;
+
+                class SomeBusinessImplTest {
+
+                    @Test
+                    public void calculateSum() {
+                        SomeBusinessImpl business = new SomeBusinessImpl();
+                        int actualResult = business.calculateSum(new int[] {1, 2, 3});
+                        int expectResult = 6;
+                        assertEquals(expectResult, actualResult);
+                    }
+                }
+
+
+                
