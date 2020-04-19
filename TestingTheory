@@ -35,7 +35,604 @@ SIMPLE UNIT TEST:
                         int expectResult = 6;
                         assertEquals(expectResult, actualResult);
                     }
+
+                     public void calculateSum_empty() {
+                        SomeBusinessImpl business = new SomeBusinessImpl();
+                        int actualResult = business.calculateSum(new int[] {});
+                        int expectResult = 0;
+                        assertEquals(expectResult, actualResult);
+                    }
+
+                    @Test
+                    public void calculateSum_oneValue() {
+                        SomeBusinessImpl business = new SomeBusinessImpl();
+                        int actualResult = business.calculateSum(new int[] {5});
+                        int expectResult = 5;
+                        assertEquals(expectResult, actualResult);
+                    }
                 }
 
 
-                
+USING DATA SERVICE AND STUB:
+
+                package com.outspace.unittesting.unittesting.business;
+
+                import com.outspace.unittesting.unittesting.data.SomeDataService;
+
+                public class SomeBusinessImpl {
+
+                    SomeDataService someDataService;
+
+                    public int calculateSum(int[] data) {
+                        int sum = 0;
+                        for (int value:data) {
+                            sum += value;
+                        }
+                        return sum;
+                    }
+
+                    public int calculateSumUsingDataService() {
+                        int sum = 0;
+                        int[] data = someDataService.retrieveAllData();
+                        for (int value:data) {
+                            sum += value;
+                        }
+                        return sum;
+                    }
+
+                    public void setSomeDataService(SomeDataService someDataService) {
+                        this.someDataService = someDataService;
+                    }
+                }
+
+
+
+                package com.outspace.unittesting.unittesting.business;
+
+                import com.outspace.unittesting.unittesting.data.SomeDataService;
+                import org.junit.jupiter.api.Test;
+
+                import static org.junit.jupiter.api.Assertions.assertEquals;
+
+                class SomeDataServiceStub implements SomeDataService {
+                    @Override
+                    public int[] retrieveAllData() {
+                        return new int[] {1 ,2, 3};
+                    }
+                }
+
+                class SomeDataServiceStubEmpty implements  SomeDataService {
+                    @Override
+                    public int[] retrieveAllData() {
+                        return new int[0];
+                    }
+                }
+
+                class SomeDataServiceStubOneValue implements SomeDataService {
+                    @Override
+                    public int[] retrieveAllData() {
+                        return new int[] {5};
+                    }
+                }
+
+                class SomeBusinessStubTest {
+
+                    @Test
+                    public void calculateSumUsingDataService_basic() {
+                        SomeBusinessImpl business = new SomeBusinessImpl();
+                        business.setSomeDataService(new SomeDataServiceStub());
+
+                        int actualResult = business.calculateSumUsingDataService();
+                        int expectResult = 6;
+                        assertEquals(expectResult, actualResult);
+                    }
+
+                    @Test
+                    public void calculateSum_empty() {
+                        SomeBusinessImpl business = new SomeBusinessImpl();
+                        business.setSomeDataService(new SomeDataServiceStubEmpty());
+                        int actualResult = business.calculateSumUsingDataService();
+                        int expectResult = 0;
+                        assertEquals(expectResult, actualResult);
+                    }
+
+                    @Test
+                    public void calculateSum_oneValue() {
+                        SomeBusinessImpl business = new SomeBusinessImpl();
+                        business.setSomeDataService(new SomeDataServiceStubOneValue());
+
+                        int actualResult = business.calculateSumUsingDataService();
+                        int expectResult = 5;
+                        assertEquals(expectResult, actualResult);
+                    }
+                }
+
+
+
+MOCKS:
+
+        - Instead of creating direct classes, with mock you can programmaically create classes.
+
+        - When on the data service mock, somebody calls the retrieveAllData() method, we want to return
+          this data back.
+
+    - We created a mock - we just called a mock() method which is present inside the Mockito - static method.
+
+    - We called SomeDataService.class to Mockito and this returned back us te Mock.
+
+    - On the mock we used up when() method to say when this method is called - return this data back
+
+
+           class SomeBusinessMockTest {
+
+            @Test
+            public void calculateSumUsingDataService_basic() {
+                SomeBusinessImpl business = new SomeBusinessImpl();
+                SomeDataService dataServiceMock = mock(SomeDataService.class);
+                when(dataServiceMock.retrieveAllData()).thenReturn(new int[] {1, 2, 3});
+                business.setSomeDataService(dataServiceMock);
+
+                int actualResult = business.calculateSumUsingDataService();
+                int expectResult = 6;
+                assertEquals(expectResult, actualResult);
+            }
+
+            @Test
+            public void calculateSum_empty() {
+                SomeBusinessImpl business = new SomeBusinessImpl();
+                SomeDataService dataServiceMockEmpty = mock(SomeDataService.class);
+                when(dataServiceMockEmpty.retrieveAllData()).thenReturn(new int[0]);
+                business.setSomeDataService(dataServiceMockEmpty);
+                int actualResult = business.calculateSumUsingDataService();
+                int expectResult = 0;
+                assertEquals(expectResult, actualResult);
+            }
+
+            @Test
+            public void calculateSum_oneValue() {
+                SomeBusinessImpl business = new SomeBusinessImpl();
+                SomeDataService dataServiceMokOneValue = mock(SomeDataService.class);
+                when(dataServiceMokOneValue.retrieveAllData()).thenReturn(new int[] {5});
+                business.setSomeDataService(dataServiceMokOneValue);
+
+                int actualResult = business.calculateSumUsingDataService();
+                int expectResult = 5;
+                assertEquals(expectResult, actualResult);
+            }
+        }
+ 
+
+
+REFACTORING AGAINST DUPLICATIONS:
+
+
+        class SomeBusinessMockTest {
+
+            SomeBusinessImpl business = new SomeBusinessImpl();
+            SomeDataService dataServiceMock = mock(SomeDataService.class);
+            
+            @BeforeEach
+            public void before() {
+                business.setSomeDataService(dataServiceMock);
+            }
+            
+            @Test
+            public void calculateSumUsingDataService_basic() {
+                when(dataServiceMock.retrieveAllData()).thenReturn(new int[] {1, 2, 3});
+                assertEquals(6, business.calculateSumUsingDataService());
+            }
+
+            @Test
+            public void calculateSum_empty() {
+                when(dataServiceMock.retrieveAllData()).thenReturn(new int[0]);
+                assertEquals(0, business.calculateSumUsingDataService());
+            }
+
+            @Test
+            public void calculateSum_oneValue() {
+                when(dataServiceMock.retrieveAllData()).thenReturn(new int[] {5});
+                assertEquals(5, business.calculateSumUsingDataService());
+            }
+        }
+
+
+
+@Mock, @InjectMocks, @RunWith(MockitoJUnitRunner.class), @ExtendWith(SpringExtension.class) - Junit 5:
+
+    -  We want somebody to create an instance of SomeBusinessImpl, which uses the mock
+       and inject it to the instance of SomeBusinessImpl
+
+    - When I do the @InjectMocks, I don't need to do @BeforeEach and setter, that will be automatically
+      called by  Mockito.
+
+
+        @ExtendWith(SpringExtension.class)
+        class SomeBusinessMockTest {
+
+            @InjectMocks
+            SomeBusinessImpl business;
+
+            @Mock
+            SomeDataService dataServiceMock;
+
+            @Test
+            public void calculateSumUsingDataService_basic() {
+                when(dataServiceMock.retrieveAllData()).thenReturn(new int[] {1, 2, 3});
+                assertEquals(6, business.calculateSumUsingDataService());
+            }
+
+            @Test
+            public void calculateSum_empty() {
+                when(dataServiceMock.retrieveAllData()).thenReturn(new int[0]);
+                assertEquals(0, business.calculateSumUsingDataService());
+            }
+
+            @Test
+            public void calculateSum_oneValue() {
+                when(dataServiceMock.retrieveAllData()).thenReturn(new int[] {5});
+                assertEquals(5, business.calculateSumUsingDataService());
+            }
+        }
+
+
+MULTIPLE RETURN VALUES AND SPECIFIC ARGUMENT MATCHERS:
+
+
+        Mocking List Interface:
+
+
+            public class ListMockTest {
+
+                List mock = mock(List.class);
+
+                @Test
+                public void size_basic() {
+                    when(mock.size()).thenReturn(5);
+                    assertEquals(5, mock.size());
+                }
+
+                @Test
+                public void returnDifferentValues() {
+                    when(mock.size()).thenReturn(5).thenReturn(10);
+                    assertEquals(5, mock.size());    // the first call will return 5
+                    assertEquals(10, mock.size());    // the second call will return 10
+                }
+                @Test
+                public void returnWithParameters() {
+                    when(mock.get(0)).thenReturn("in28minutes");
+                    assertEquals("in28minutes",mock.get(0));
+                    assertEquals(null,mock.get(1));
+                }
+            }
+
+
+
+ARGUMENT MATCHERS, GENERIC PARAMETERS:
+
+            
+        On the mock  - when the get method is called with any parameters.
+
+            ArgumentMatchers.any...()
+
+            import static org.mockito.ArgumentMatchers.anyInt;
+
+
+             @Test
+            public void returnWithGenericParameters() {
+                when(mock.get(anyInt())).thenReturn("in28minutes");
+                assertEquals("in28minutes",mock.get(0));
+                assertEquals(null,mock.get(1));
+            }
+
+
+
+VERIFY METHOD CALLS:
+
+        - We want to see if a specific method is involved:     someDataService.storeSum(sum);
+
+                    public int calculateSumUsingDataService() {
+                        int sum = 0;
+                        int[] data = someDataService.retrieveAllData();
+                        for (int value:data) {
+                            sum += value;
+                        }
+                        //someDataService.storeSum(sum);
+                        return sum;
+                    }
+
+
+            @Test
+                public void verificationBasics() {
+                    String value = mock.get(0);
+                    String value1 = mock.get(1);
+
+                    //Verify
+                    verify(mock).get(0);
+                    verify(mock).get(anyInt());
+                    verify(mock, times(2)).get(anyInt());
+                    verify(mock, atLeast(1)).get(anyInt());
+                    verify(mock, atMost(3)).get(anyInt());
+                    verify(mock, never()).get(2);
+                }
+
+
+        times(1)  -  checks that method was called one time
+
+            - test will be failed if we'll call metod more then one time.
+
+
+
+ARGUMENT CAPTURE:
+
+
+        - How to capture an argument that is passed to a method call
+        
+
+            @Test
+            public void argumentCapturing() {
+                //SUT
+                mock.add("SomeString");
+
+                //Verification
+                ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+                verify(mock).add(captor.capture());
+
+                assertEquals("SomeString", captor.getValue());
+            }
+
+
+
+ARGUMENT CAPTURE ON MULTIPLE METHOD CALLS:
+
+
+            @Test
+            public void multipleCapturing() {
+                //SUT
+                mock.add("SomeString");
+                mock.add("SomeString2");
+
+                //Verification
+                ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+                verify(mock, times(2)).add(captor.capture());
+
+                List<String> allValues = captor.getAllValues();
+
+                assertEquals("SomeString", allValues.get(0));
+                assertEquals("SomeString2", allValues.get(1));
+            }
+
+
+
+Spy:
+
+            @Test
+            public void spying() {
+                ArrayList arrayListMock = mock(ArrayList.class);
+                arrayListMock.get(0);  //null
+                arrayListMock.size();  // 0
+                arrayListMock.add("Test");
+                arrayListMock.add("Test2");
+                arrayListMock.size();   //0
+            }
+        
+            - A mock does not retain behaviour (code) of the original class 
+
+            - Spy uses a real class
+
+            - When you create a Spy, the original behaviour of the ArrayList is retained
+              and you can stub specific methods.
+
+
+            => You can stub(overide) and verify specific behaviour (methods) on a Spy.
+
+            - Use scenario:
+
+                - When you would want to use the original dependency, you don't want to mock the dependency,
+                  but you would want to find out what happening with it.
+
+                - The thing with Spy you can also call verify methods on it.
+
+            - So, if you do not have access to a specific class to get the data from it but you'd 
+              want to check what's going on that need specific class what methods are getting
+              called and things like that, you can create a spy  and you can do the fixations on it
+              in a specific way to be learned about spying is just like.
+
+
+            - Can not mock (only with PowerMock):
+
+                - static methods;
+                - constructors;
+                - equals(), hashcode()      
+
+
+
+CONTROLLER TESTING:
+
+
+        - We want to be able to test just this HelloWorldController,
+        
+        - We want to be able to invoke this /helloworld and we would want to check,
+          with returning String.
+
+        - We only want to launch  the controllers of this specific controller:
+
+            - SpringMockMvc helps us   - @WebMvcTest
+
+
+
+                @ExtendWith(SpringExtension.class)
+                @WebMvcTest(HelloWorldController.class)
+                public class HelloWorldControllerTest {
+
+                    @Autowired
+                    private MockMvc mockMvc;
+
+                    @Test
+                    public void helloWorld_basic() throws Exception {
+
+                        // call "/hello-world" GET application/json
+
+                        RequestBuilder request = MockMvcRequestBuilders
+                                .get("/hello-world")
+                                .accept(MediaType.APPLICATION_JSON);
+                        MvcResult result = mockMvc.perform(request).andReturn();
+
+                        // verify "Hello World"
+
+                        assertEquals("Hello World", result.getResponse().getContentAsString());
+                    }
+                }
+
+
+
+USING RESPONSE MATCHERS TO CHECK STATUS AND CONTENT:
+
+
+
+                @Autowired
+                private MockMvc mockMvc;
+
+                @Test
+                public void helloWorld_basic() throws Exception {
+
+                    // call "/hello-world" GET application/json
+
+                    RequestBuilder request = MockMvcRequestBuilders
+                            .get("/hello-world")
+                            .accept(MediaType.APPLICATION_JSON);
+                    MvcResult result = mockMvc.perform(request)
+                            .andExpect(status().is(200))
+                            .andExpect(content().string("Hello World"))
+                            .andReturn();
+                }
+            }
+
+
+
+
+TESTING BASIC REST SERVICE IN ITEM CONTROLLER:
+
+            controller:
+
+            @GetMapping("/dummy-item")
+            public Item dummyItem() {
+                return new Item(1, "Ball", 10, 100);
+            }
+
+
+            .json() method is much better than strin(), so that it can match the respones
+            even if it contains additional spaces. Or it can also match the respones if some
+            of the elements are missing so it would onle check for things that are present in it
+
+
+                @Test
+                public void dummyItem_basic() throws Exception {
+
+                    RequestBuilder request = MockMvcRequestBuilders
+                            .get("/dummy-item")
+                            .accept(MediaType.APPLICATION_JSON);
+
+                    MvcResult result = mockMvc.perform(request)
+                            .andExpect(status().isOk())
+                            .andExpect(content().json("{\"id\":1,\"name\":\"Ball\",\"price\":10,\"quantity\":100}"))
+                            .andReturn();
+                }
+
+
+
+JSON ASSERT:
+
+
+                @Test
+                public void jsonAssert_StrictTrue_ExactMatchExceptForSpaces() throws JSONException {
+                    String expectedResponse  = "{\"id\":1,\"name\":\"Ball\",\"price\":10,\"quantity\":100}";
+                    JSONAssert.assertEquals(expectedResponse , actualResponse, true);
+                }
+
+                @Test
+                public void jsonAssert_StrictFalse() throws JSONException {
+                    String expectedResponse  = "{\"id\":1,\"name\":\"Ball\",\"price\":10}";
+                    JSONAssert.assertEquals(expectedResponse , actualResponse, false);
+                }
+
+                @Test
+                public void jsonAssert_WithoutEscapeCharacters() throws JSONException {
+                    String expectedResponse  = "{id:1,name:Ball,price:10}";
+                    JSONAssert.assertEquals(expectedResponse , actualResponse, false);
+                }
+
+
+
+RESR SERVICE TALKING TO BUSINESS LAYER:
+
+
+            controller:
+
+
+            @RestController
+            public class ItemController {
+
+                @Autowired
+                private ItemBusinessService businessService;
+
+                @GetMapping("/dummy-item")
+                public Item dummyItem() {
+                    return new Item(1, "Ball", 10, 100);
+                }
+
+                @GetMapping("/item-from-business-service")
+                public Item itemFromBusinessService() {
+                    return businessService.retrieveHardcodedItem();
+                }
+            }
+
+
+
+
+            controllerTest:
+
+
+            @ExtendWith(SpringExtension.class)
+            @WebMvcTest(ItemController.class)
+            public class ItemControllerTest {
+
+                @Autowired
+                private MockMvc mockMvc;
+
+                @MockBean
+                private ItemBusinessService businessService;
+
+                @Test
+                public void dummyItem_basic() throws Exception {
+
+                    RequestBuilder request = MockMvcRequestBuilders
+                            .get("/dummy-item")
+                            .accept(MediaType.APPLICATION_JSON);
+
+                    MvcResult result = mockMvc.perform(request)
+                            .andExpect(status().isOk())
+                            .andExpect(content().json("{\"id\":1,\"name\":\"Ball\",\"price\":10,\"quantity\":100}"))
+                            .andReturn();
+                }
+
+                @Test
+                public void itemBusinessService_basic() throws Exception {
+
+                    //by default, mock returns null
+                    when(businessService.retrieveHardcodedItem()).thenReturn(new Item(2, "Item2",10,10));
+
+                    RequestBuilder request = MockMvcRequestBuilders
+                            .get("/item-from-business-service")
+                            .accept(MediaType.APPLICATION_JSON);
+
+                    MvcResult result = mockMvc.perform(request)
+                            .andExpect(status().isOk())
+                            .andExpect(content().json("{id: 2, name: Item2, price: 10}",false))
+                            .andReturn();
+                }
+            }
+                    
+
+
+
+    

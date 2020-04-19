@@ -1,22 +1,23 @@
 package com.outspace.unittesting.unittesting.business;
 
 import com.outspace.unittesting.unittesting.data.SomeDataService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(SpringExtension.class)
 class SomeBusinessMockTest {
 
-    SomeBusinessImpl business = new SomeBusinessImpl();
-    SomeDataService dataServiceMock = mock(SomeDataService.class);
+    @InjectMocks
+    SomeBusinessImpl business;
 
-    @BeforeEach
-    public void before() {
-        business.setSomeDataService(dataServiceMock);
-    }
+    @Mock
+    SomeDataService dataServiceMock;
 
     @Test
     public void calculateSumUsingDataService_basic() {
@@ -35,4 +36,5 @@ class SomeBusinessMockTest {
         when(dataServiceMock.retrieveAllData()).thenReturn(new int[] {5});
         assertEquals(5, business.calculateSumUsingDataService());
     }
+
 }
