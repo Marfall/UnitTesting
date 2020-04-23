@@ -635,4 +635,382 @@ RESR SERVICE TALKING TO BUSINESS LAYER:
 
 
 
+PREPARE DATA LAYERS WITH JPA:
+
+
+         FOR H2 CONNECT FROM INTELLIJ IDEA:
+
+        1) Define a bean:
+
+                //@Profile("dev")
+                @Bean(initMethod = "start", destroyMethod = "stop")
+                public Server h2Server() throws SQLException {
+                    return Server.createTcpServer("-tcp", "-tcpAllowOthers", "-tcpPort", "9092");
+                }
+        
+        2) Change H2 Maven-skope:
+
+                		<dependency>
+                            <groupId>com.h2database</groupId>
+                            <artifactId>h2</artifactId>
+                            <!-- <scope>runtime</scope> -->
+                        </dependency>
+
+        3) Connection properties:
+
+                url: jdbc:h2:tcp://localhost:9092/mem:testdb
+                username: sa 
+                password: 
+
+        4) in application properties:
+
+            spring.h2.console.enabled=true
+            spring.jpa.show-sql=true
+            
+
+
+
+        Hibernate: drop table item if exists
+        Hibernate: create table item (id integer not null, name varchar(255), price integer not null, quantity integer not null, primary key (id))
+
+        http://localhost:8080/h2-console   
+
+        spring.h2.console.enabled=true
+
+        Populate date on data.sql:
+
+        INSERT INTO item(id,name ,price,quantity)
+        VALUES (10001,'Item1',10,20);
+
+
+
+
+REST SERVICE TALKING TO THE DATABASE:
+
+
+        
+           @GetMapping("/all-items-from-database")
+            public List<Item> retrieveAllItems() {
+                List<Item> items = businessService.retrieveAllItems();
+                for(Item item : items) {
+                    item.setValue(item.getPrice() * item.getQuantity());
+                }
+                return items;
+            }
+
+
+            public interface ItemRepository extends JpaRepository<Item, Integer> {
+            }
+
+
+            @Service
+            public class ItemBusinessService {
+
+                @Autowired
+                private ItemRepository repository;
+
+                public Item retrieveHardcodedItem() {
+                    return new Item(1, "Ball", 10,100);
+                }
+
+                public List<Item> retrieveAllItems() {
+                    return repository.findAll();
+                }
+            }
+
+
+
+UNIT TEST FOR WEB LAYER:
+
+
+
+            @Autowired
+            private MockMvc mockMvc;
+
+            @MockBean
+            private ItemBusinessService businessService;
+
+
+            @Test
+            public void retrieveAllItems_basic() throws Exception {
+
+                //by default, mock returns null
+                when(businessService.retrieveAllItems()).thenReturn(
+                        Arrays.asList(new Item(2, "Item2", 10, 10), new Item(3, "Item3", 20, 20)));
+
+                RequestBuilder request = MockMvcRequestBuilders
+                        .get("/all-items-from-database")
+                        .accept(MediaType.APPLICATION_JSON);
+
+                MvcResult result = mockMvc.perform(request)
+                        .andExpect(status().isOk())
+                        .andExpect(content().json("[{id: 2, name: Item2, price: 10},{id: 3, name: Item3, price: 20}]",false))
+                        .andReturn();
+            }
+
+
+        
+
+
+UNIT TEST FOR BUSINESS LAYER:
+
+
+        @ExtendWith(SpringExtension.class)
+        class ItemBusinessServiceTest {
+
+            @InjectMocks
+            private ItemBusinessService business;
+
+            @Mock
+            private ItemRepository repository;
+
+            @Test
+            public void calculateSumUsingDataService_basic() {
+                when(repository.findAll()).thenReturn(
+                        Arrays.asList(new Item(2, "Item2", 10, 10),
+                                new Item(3, "Item3", 20, 20)));
+
+                List<Item> items = business.retrieveAllItems();
+                System.out.println(items);
+                System.out.println(items.get(0));
+                System.out.println(items.get(1));
+                assertEquals(100, items.get(0).getValue());
+                assertEquals(400, items.get(1).getValue());
+            }
+        }
+
+
+
+
+WRITE UNIT TEST FOR DATA LAYER:
+
+
+        @ExtendWith(SpringExtension.class)
+        @DataJpaTest
+        public class ItemRepositoryTest {
+
+            @Autowired
+            private ItemRepository repository;
+
+            @Test
+            public void testFindAll() {
+                List<Item> items =  repository.findAll();
+                assertEquals(3, items.size());
+            }
+        }
+
+
+
+
+WRITING INTEGRATION TEST USING @SPRINGBOOTTEST
+
+
+        - Integration test combining all layers together
+
+
+        - Integration Test for the ItemController:
+
+
+        @ExtendWith(SpringExtension.class)
+        @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+        public class ItemControllerIT {
+
+            @Autowired
+            private TestRestTemplate restTemplate;
+
+            @Test
+            public void contextLoads() throws JSONException {
+                String response = this.restTemplate.getForObject("/all-items-from-database", String.class);
+                JSONAssert.assertEquals("[{id:10001, price:10},  {id:10002} , {id:10003}]", response, false);
+            }
+        }
+
+
+
+
+USING @MOCKBEAN TO MOCK OUT DEPENDENCIES YOU DO NOT WANT TO TALK:
+
+
+        @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+        public class ItemControllerIT {
+
+            @Autowired
+            private TestRestTemplate restTemplate;
+
+            @MockBean
+            private ItemRepository repository;
+
+            @Test
+            public void contextLoads() throws JSONException {
+
+                String response = this.restTemplate.getForObject("/all-items-from-database", String.class);
+                JSONAssert.assertEquals("[{id:10001, price:10},  {id:10002} , {id:10003}]", response, false);
+            }
+        }
+
+
+
+
+
+CREATING DIFFERENT TEST CONFIGURATION:
+
+
+    - in test folder we need create resource folder with application.properties
+
+    - Particular test:
+
+        @SpringBootTest
+        @TestPropertySource(locations = {"classpath:test-configuration.properties"})
+
+
+
+WRITING UNIT TESTS FOR OTHER REQUEST METHODS:
+
+
+        @Test
+        public void postRequestTest() throws Exception {
+
+            RequestBuilder requestBuilder = MockMvcRequestBuilders.post(
+                    "/items")
+                    .accept(MediaType.APPLICATION_JSON)
+                    .content("{\"id\":1,\"name\":\"Ball\",\"price\":10,\"quantity\":100)}")
+                    .contentType(MediaType.APPLICATION_JSON);
+
+            MvcResult result = mockMvc.perform(requestBuilder)
+                    .andExpect(status().isCreated())
+                    .andExpect(
+                            header()
+                            .string("location",
+                                    containsString("/item")))
+                    .andReturn();
+        }
+
+
+
+REFACTOR SOME BUSINESS IMPL TO USE FUNCTIONAL PROGRAMMING:
     
+
+          public int calculateSum(int[] data) {
+                // 1,2,3,4,5 => 1+2+3+4+5
+                return Arrays.stream(data).reduce(Integer::sum).orElse(0);
+            }
+
+
+        public int calculateSumUsingDataService() {
+            int sum = 0;
+            int[] data = someDataService.retrieveAllData();
+            return Arrays.stream(data)
+                    .reduce(Integer::sum).orElse(0);
+        }
+
+
+
+
+BETTER ASSERTATIONS WITH HAMSCRET:
+
+
+        package com.outspace.unittesting.unittesting.spike;
+
+        import org.junit.jupiter.api.Test;
+
+        import java.util.Arrays;
+        import java.util.List;
+
+        import static org.hamcrest.MatcherAssert.assertThat;
+        import static org.hamcrest.Matchers.*;
+
+        public class HamcrestMatchersTest {
+
+            @Test
+            public void learning() {
+                List<Integer> numbers = Arrays.asList(12, 15, 45);
+
+                assertThat(numbers, hasSize(3));   // hamcrest static imports
+                assertThat(numbers, hasItems(12, 45, 15));
+                assertThat(numbers, everyItem(greaterThan(10)));
+                assertThat(numbers, everyItem(lessThan(100)));
+
+                assertThat("", emptyString());
+                assertThat("ABCDE", containsString("BCD"));
+                assertThat("ABCDE", startsWith("ABC"));
+                assertThat("ABCDE", endsWith("CDE"));
+            }
+        }
+
+
+
+
+ASSERTATIONS WITH ASSERTJ:
+
+
+
+            import org.junit.jupiter.api.Test;
+
+            import java.util.Arrays;
+            import java.util.List;
+
+            import static org.assertj.core.api.Assertions.assertThat;
+
+
+            public class AssertJTest {
+
+                @Test
+                public void learning() {
+                    List<Integer> numbers = Arrays.asList(12, 15, 45);
+
+                    assertThat(numbers).hasSize(3)       // chaining
+                            .contains(12,15)
+                            .allMatch(x -> x > 10)      // for every element check, that it is greater than 10
+                            .allMatch(x -> x < 100);
+
+                    assertThat("").isEmpty();
+                    assertThat("ABCDE").contains("BCD")
+                            .startsWith("ABC")
+                            .endsWith("CDE");
+
+                }
+            }
+
+
+
+
+ASSERTATIONS WITH JSONPATHTEST:
+
+
+
+            import com.jayway.jsonpath.DocumentContext;
+            import com.jayway.jsonpath.JsonPath;
+            import org.junit.jupiter.api.Test;
+
+            import java.util.List;
+
+            import static org.assertj.core.api.Assertions.assertThat;
+
+            public class JsonPathTest {
+
+                @Test
+                public void learning() {
+                    String responseFromService = "[\n" +
+                    "{\"id\":10000, \"name\":\"Pencil\", \"quantity\":5},\n" +
+                    "{\"id\":10001, \"name\":\"Pen\", \"quantity\":15},\n" +
+                    "{\"id\":10002, \"name\":\"Eraser\", \"quantity\":10},\n" +
+                    "]";
+
+                    DocumentContext context =  JsonPath.parse(responseFromService);
+                    int length = context.read("$.length()");
+                    assertThat(length).isEqualTo(3);
+
+                    List<Integer> ids = context.read("$..id");    // find out all the id-s
+                    assertThat(ids).containsExactly(10000, 10001, 10002);
+
+                    System.out.println(context.read("$.[1]").toString());
+                    System.out.println(context.read("$.[0:1]").toString());
+                    System.out.println(context.read("$.[?(@.name=='Eraser')]").toString());
+                    System.out.println(context.read("$.[?(@.quantity==5)]").toString());
+                }
+            }
+
+
+
+            
+

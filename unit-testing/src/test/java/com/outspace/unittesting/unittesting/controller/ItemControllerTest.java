@@ -14,9 +14,11 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import java.util.Arrays;
+
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(ItemController.class)
@@ -54,6 +56,41 @@ public class ItemControllerTest {
         MvcResult result = mockMvc.perform(request)
                 .andExpect(status().isOk())
                 .andExpect(content().json("{id: 2, name: Item2, price: 10}",false))
+                .andReturn();
+    }
+
+    @Test
+    public void retrieveAllItems_basic() throws Exception {
+
+        //by default, mock returns null
+        when(businessService.retrieveAllItems()).thenReturn(
+                Arrays.asList(new Item(2, "Item2", 10, 10), new Item(3, "Item3", 20, 20)));
+
+        RequestBuilder request = MockMvcRequestBuilders
+                .get("/all-items-from-database")
+                .accept(MediaType.APPLICATION_JSON);
+
+        MvcResult result = mockMvc.perform(request)
+                .andExpect(status().isOk())
+                .andExpect(content().json("[{id: 2, name: Item2, price: 10},{id: 3, name: Item3, price: 20}]",false))
+                .andReturn();
+    }
+
+    @Test
+    public void postRequestTest() throws Exception {
+
+        RequestBuilder requestBuilder = MockMvcRequestBuilders.post(
+                "/items")
+                .accept(MediaType.APPLICATION_JSON)
+                .content("{\"id\":1,\"name\":\"Ball\",\"price\":10,\"quantity\":100)}")
+                .contentType(MediaType.APPLICATION_JSON);
+
+        MvcResult result = mockMvc.perform(requestBuilder)
+                .andExpect(status().isCreated())
+                .andExpect(
+                        header()
+                        .string("location",
+                                containsString("/item")))
                 .andReturn();
     }
 }
